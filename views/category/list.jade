@@ -1,0 +1,74 @@
+extends ../layout
+
+block content
+  h2 Categories
+  .filters.mb-3
+    input#search.form-control.d-inline-block.w-auto(type="text", placeholder="Search by name", style="width:240px;")
+    a.btn.btn-primary.ml-3(href="/categories/new") + Add Category
+  #categoryError.mt-2
+  table#categoryTable.table.table-striped
+    thead
+      tr
+        th Name
+        th Actions
+    tbody
+
+  script(src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js")
+  script.
+    let categoryTable;
+    function showError(msg) {
+      $('#categoryError').html(`<div class="alert alert-danger">${msg}</div>`);
+    }
+    function clearError() {
+      $('#categoryError').empty();
+    }
+    function reloadTable() {
+      clearError();
+      categoryTable.ajax.reload(null, true);
+    }
+    function deleteCategory(id) {
+      if (!confirm('Delete this category?')) return;
+      clearError();
+      $.ajax({
+        url: `/categories/api/${id}`,
+        method: 'DELETE',
+        success: reloadTable,
+        error: function(xhr) {
+          showError(xhr.responseJSON?.error || 'Failed to delete category');
+        }
+      });
+    }
+    $(document).ready(function() {
+      categoryTable = $('#categoryTable').DataTable({
+        processing: true,
+        serverSide: true,
+        searching: false,
+        pageLength: 10,
+        ajax: function(data, callback, settings) {
+          clearError();
+          const page = Math.floor(data.start / data.length) + 1;
+          const search = $('#search').val().trim();
+          $.ajax({
+            url: '/categories/api',
+            data: { search, page, limit: data.length },
+            success: function(res) {
+              callback({
+                data: res.categories.map(cat => [
+                  cat.name,
+                  `<a href="/categories/${cat.id}/edit" class="btn btn-sm btn-info">Edit</a>
+                   <button class="btn btn-sm btn-danger" onclick="deleteCategory(${cat.id})">Delete</button>`
+                ]),
+                recordsTotal: res.totalCount || 0,
+                recordsFiltered: res.totalCount || 0
+              });
+            },
+            error: function(xhr) {
+              showError(xhr.responseJSON?.error || 'Failed to fetch categories');
+              callback({ data: [], recordsTotal: 0, recordsFiltered: 0 });
+            }
+          });
+        }
+      });
+
+      $('#search').on('input', reloadTable);
+    });

@@ -1,0 +1,63 @@
+extends ../layout
+
+block content
+  .container.mt-5
+    h2.mb-4 Scrap Asset
+
+    #msg-box
+      if error
+        .alert.alert-danger= error
+      if success
+        .alert.alert-success= success
+
+    form#scrapForm(method="POST", action="/assettransactions/api/scrap")
+      .mb-3
+        label.form-label(for="assetIds") Select Asset(s) to Scrap
+        select.form-select(name="assetIds", id="assetIds", multiple, required, size="8")
+          each asset in availableAssets
+            option(value=asset.id) #{asset.serialNumber} - #{asset.make} #{asset.model}
+        small.text-muted Hold Ctrl/Cmd to select multiple assets.
+
+      .mb-3
+        label.form-label(for="reason") Reason for Scrapping
+        input.form-control(type="text", name="reason", id="reason", required, maxlength="100", placeholder="Enter reason (e.g. obsolete, damaged, lost)")
+
+      .mb-3
+        label.form-label(for="date") Scrap Date
+        input.form-control(type="date", name="date", id="date", required, max=new Date().toISOString().slice(0,10))
+
+      button.btn.btn-danger.mt-3(type="submit") Scrap Asset(s)
+
+  script.
+    document.getElementById('scrapForm').onsubmit = async function(e) {
+      e.preventDefault();
+      const form = e.target;
+      const formData = new FormData(form);
+      // assetIds[] for multi-select
+      const assetIds = Array.from(document.getElementById('assetIds').selectedOptions).map(opt => opt.value);
+      formData.delete('assetIds');
+      assetIds.forEach(id => formData.append('assetIds', id));
+      const payload = new URLSearchParams(formData).toString();
+      const msgBox = document.getElementById('msg-box');
+      msgBox.innerHTML = '';
+      const res = await fetch('/assettransactions/api/scrap', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Accept': 'application/json' },
+        body: payload
+      });
+      const data = await res.json();
+      if(data.success) {
+        msgBox.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
+        form.reset();
+        // Refresh asset options in dropdown
+        if(data.availableAssets) {
+          const assetSel = document.getElementById('assetIds');
+          assetSel.innerHTML = '';
+          data.availableAssets.forEach(asset => {
+            assetSel.innerHTML += `<option value="${asset.id}">${asset.serialNumber} - ${asset.make} ${asset.model}</option>`;
+          });
+        }
+      } else {
+        msgBox.innerHTML = `<div class="alert alert-danger">${data.message}</div>`;
+      }
+    }

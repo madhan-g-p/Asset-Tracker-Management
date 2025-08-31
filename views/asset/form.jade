@@ -1,0 +1,85 @@
+extends ../layout
+
+block content
+  h2= isEdit ? "Edit Asset" : "Add Asset"
+  #formError
+  form#assetForm
+    .form-group
+      label(for="serialNumber") Serial Number
+      input#serialNumber.form-control(type="text", name="serialNumber", required)
+    .form-group
+      label(for="make") Make
+      input#make.form-control(type="text", name="make")
+    .form-group
+      label(for="model") Model
+      input#model.form-control(type="text", name="model")
+    .form-group
+      label(for="value") Value
+      input#value.form-control(type="number", name="value", step="0.01", min="0")
+    .form-group
+      label(for="categoryId") Type
+      select#categoryId.form-control(name="categoryId", required)
+        option(value="") Select Type
+    button.btn.mx-2.btn-primary(type="submit")= isEdit ? "Update" : "Create"
+    a.btn.mx-2.btn-secondary(href="/assets") Cancel
+  script.
+    function showFormError(msg) {
+      $('#formError').html(`<div class="alert alert-danger">${msg}</div>`);
+    }
+    function clearFormError() {
+      $('#formError').empty();
+    }
+    function loadCategories(selectedId) {
+      $.ajax({
+        url: '/categories/api',
+        data: { page: 1, limit: 1000 },
+        success: function(res) {
+          let opts = `<option value="">Select Type</option>`;
+          res.categories.forEach(cat => {
+            opts += `<option value="${cat.id}"${cat.id == selectedId ? ' selected' : ''}>${cat.name}</option>`;
+          });
+          $('#categoryId').html(opts);
+        }
+      });
+    }
+    const isEdit = !#{!isEdit};
+    if (isEdit) {
+      $.ajax({
+        url: `/assets/api/${'#{id}'}`,
+        method: 'GET',
+        success: function(res) {
+          $('#serialNumber').val(res.asset.serialNumber);
+          $('#make').val(res.asset.make);
+          $('#model').val(res.asset.model);
+          $('#value').val(res.asset.value);
+          loadCategories(res.asset.categoryId);
+        },
+        error: function(xhr) {
+          showFormError(xhr.responseJSON?.error || 'Failed to load asset');
+        }
+      });
+    } else {
+      loadCategories();
+    }
+    $('#assetForm').on('submit', function(e) {
+      e.preventDefault();
+      clearFormError();
+      const data = {
+        serialNumber: $('#serialNumber').val(),
+        make: $('#make').val(),
+        model: $('#model').val(),
+        value: parseFloat($('#value').val() || 0),
+        categoryId: $('#categoryId').val()
+      };
+      const method = isEdit ? 'PUT' : 'POST';
+      const url = isEdit ? `/assets/api/${'#{id}'}` : '/assets/api';
+      $.ajax({
+        url, method,
+        contentType: 'application/json',
+        data: JSON.stringify(data),
+        success: function() { window.location = '/assets'; },
+        error: function(xhr) {
+          showFormError(xhr.responseJSON?.error || 'Unknown error');
+        }
+      });
+    });

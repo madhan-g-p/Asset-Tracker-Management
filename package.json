@@ -1,0 +1,41 @@
+{
+  "name": "asset-management-app",
+  "version": "1.0.0",
+  "description": "A Node.js web app to track company assets, employees, and asset actions. Built with Express, Sequelize (PostgreSQL), Jade, Bootstrap, and DataTables.",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js",
+    "migrate": "sequelize db:migrate",
+    "seed": "sequelize db:seed:all"
+  },
+  "keywords": [
+    "asset-management",
+    "nodejs",
+    "express",
+    "sequelize",
+    "postgresql",
+    "jade",
+    "bootstrap",
+    "datatables"
+  ],
+  "author": "Your Name <your.email@example.com>",
+  "license": "MIT",
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "bootstrap": "^5.3.8",
+    "datatables.net": "^2.3.3",
+    "datatables.net-bs4": "^2.3.3",
+    "dotenv": "^17.2.1",
+    "express": "^5.1.0",
+    "jade": "^1.11.0",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.16.3",
+    "pg-hstore": "^2.3.4",
+    "sequelize": "^6.37.7"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0",
+    "sequelize-cli": "^6.6.3"
+  }
+}

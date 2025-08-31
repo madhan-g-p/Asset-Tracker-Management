@@ -1,0 +1,68 @@
+extends ../layout
+
+block content
+  h2= isEdit ? "Edit Employee" : "Add Employee"
+  #formError
+  form#employeeForm
+    .form-group
+      label(for="name") Name
+      input#name.form-control(type="text", name="name", required)
+    .form-group
+      label(for="email") Email
+      input#email.form-control(type="email", name="email", required)
+    .form-group
+      label(for="branch") Branch
+      input#branch.form-control(type="text", name="branch", required)
+    .form-group
+      label(for="isActive") Status
+      select#isActive.form-control(name="isActive", required)
+        option(value="true") Active
+        option(value="false") Inactive
+    button.btn.mx-2.btn-primary(type="submit")= isEdit ? "Update" : "Create"
+    a.btn.mx-2.btn-secondary(href="/employees") Cancel
+  script.
+    function showFormError(msg) {
+      $('#formError').html(`<div class="alert alert-danger">${msg}</div>`);
+    }
+    function clearFormError() {
+      $('#formError').empty();
+    }
+
+    const isEdit = !#{!isEdit};
+    if (isEdit) {
+      $.ajax({
+        url: `/employees/api/${'#{id}'}`,
+        method: 'GET',
+        success: function(res) {
+          $('#name').val(res.employee.name);
+          $('#email').val(res.employee.email);
+          $('#branch').val(res.employee.branch);
+          $('#isActive').val(res.employee.isActive ? "true" : "false");
+        },
+        error: function(xhr) {
+          showFormError(xhr.responseJSON?.error || 'Failed to load employee');
+        }
+      });
+    }
+
+    $('#employeeForm').on('submit', function(e) {
+      e.preventDefault();
+      clearFormError();
+      const data = {
+        name: $('#name').val(),
+        email: $('#email').val(),
+        branch: $('#branch').val(),
+        isActive: $('#isActive').val() === "true"
+      };
+      const method = isEdit ? 'PUT' : 'POST';
+      const url = isEdit ? `/employees/api/${'#{id}'}` : '/employees/api';
+      $.ajax({
+        url, method,
+        contentType: 'application/json',
+        data: JSON.stringify(data),
+        success: function() { window.location = '/employees'; },
+        error: function(xhr) {
+          showFormError(xhr.responseJSON?.error || 'Unknown error');
+        }
+      });
+    });

@@ -1,0 +1,102 @@
+extends ../layout
+
+block content
+  .container.mt-5
+    h2.mb-4 Return Asset
+
+    #msg-box
+      if error
+        .alert.alert-danger= error
+      if success
+        .alert.alert-success= success
+
+    form#returnForm(method="POST", action="/assettransactions/api/return")
+      .mb-3
+        label.form-label(for="employeeId") Select Employee
+        select.form-select(name="employeeId", id="employeeId", required)
+          option(value="") -- Select an Employee --
+          each emp in employeesWithAssets
+            option(value=emp.id) #{emp.name} (#{emp.email})
+
+      .mb-3
+        label.form-label(for="assetId") Select Asset(s)
+        select.form-select(name="assetIds", id="assetIds", multiple, required, size="6" disabled)
+          option(value="") -- Select Asset (choose employee first) --
+
+      .mb-3
+        label.form-label(for="reason") Reason for Return
+        select.form-select(name="reasonSelect", id="reasonSelect", required)
+          option(value="") -- Select Reason --
+          option(value="upgrade") Upgrade
+          option(value="repair") Repair
+          option(value="resignation") Resignation
+          option(value="not necessary") Not Necessary
+          option(value="other") Other
+        input.form-control.mt-2(type="text", name="reasonOther", id="reasonOther", style="display:none", placeholder="Specify other reason")
+
+      .mb-3
+        label.form-label(for="date") Return Date
+        input.form-control(type="date", name="date", id="date", required, max=new Date().toISOString().slice(0,10))
+
+      button.btn.btn-primary.mt-3(type="submit") Return Asset
+
+  script.
+    // Update asset multiselect on employee change
+    document.getElementById('employeeId').onchange = async function() {
+      const empId = this.value;
+      const assetSel = document.getElementById('assetIds');
+      assetSel.innerHTML = '<option value="">-- Select Asset (choose employee first) --</option>';
+      assetSel.disabled = true;
+      if(empId) {
+        const resp = await fetch(`/assettransactions/api/issued-assets/${empId}`);
+        const assets = await resp.json();
+        if(assets.length) {
+          assetSel.disabled = false;
+          assets.forEach(asset => {
+            assetSel.innerHTML += `<option value="${asset.id}">${asset.serialNumber} - ${asset.make} ${asset.model}</option>`;
+          });
+        }
+      }
+    };
+
+    // Toggle reasonOther textbox
+    document.getElementById('reasonSelect').onchange = function() {
+      document.getElementById('reasonOther').style.display = (this.value === 'other') ? '' : 'none';
+    };
+
+    // Handle form submission with AJAX
+    document.getElementById('returnForm').onsubmit = async function(e) {
+      e.preventDefault();
+      const form = e.target;
+      const formData = new FormData(form);
+      // assetIds[] for multi-select
+      const assetIds = Array.from(document.getElementById('assetIds').selectedOptions).map(opt => opt.value);
+      formData.delete('assetIds');
+      assetIds.forEach(id => formData.append('assetIds', id));
+      const payload = new URLSearchParams(formData).toString();
+      const msgBox = document.getElementById('msg-box');
+      msgBox.innerHTML = '';
+      const res = await fetch('/assettransactions/api/return', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Accept': 'application/json' },
+        body: payload
+      });
+      const data = await res.json();
+      if(data.success) {
+        msgBox.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
+        form.reset();
+        document.getElementById('assetIds').innerHTML = '<option value="">-- Select Asset (choose employee first) --</option>';
+        document.getElementById('assetIds').disabled = true;
+        document.getElementById('reasonOther').style.display = 'none';
+        // Update employee list and asset list in dropdowns
+        if(data.employeesWithAssets) {
+          const empSel = document.getElementById('employeeId');
+          empSel.innerHTML = '<option value="">-- Select an Employee --</option>';
+          data.employeesWithAssets.forEach(emp => {
+            empSel.innerHTML += `<option value="${emp.id}">${emp.name} (${emp.email})</option>`;
+          });
+        }
+      } else {
+        msgBox.innerHTML = `<div class="alert alert-danger">${data.message}</div>`;
+      }
+    }

@@ -1,0 +1,117 @@
+extends ../layout
+
+block content
+  h2 Assets
+  .filters.mb-3
+    input#search.form-control.d-inline-block.w-auto(type="text", placeholder="Search by serial/make/model", style="width:240px;")
+    select#categoryFilter.form-control.d-inline-block.w-auto(aria-label="Category", style="width:170px; margin-left:8px;")
+      option(value="") All Types
+    select#statusFilter.form-control.d-inline-block.w-auto(aria-label="Status", style="width:140px; margin-left:8px;")
+      option(value="") All Status
+      option(value="stock") Stock
+      option(value="issued") Issued
+      option(value="returned") Returned
+      option(value="scrapped") Scrapped
+    if showHistoryAction
+      //- No Add Asset in history mode
+    else
+      a.btn.btn-primary.ml-3(href="/assets/new") + Add Asset
+  #assetError.mt-2
+  table#assetTable.table.table-striped
+    thead
+      tr
+        th Serial
+        th Make
+        th Model
+        th Value
+        th Status
+        th Type
+        th Actions
+    tbody
+
+  script(src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js")
+  script.
+    let assetTable;
+    function showError(msg) {
+      $('#assetError').html(`<div class="alert alert-danger">${msg}</div>`);
+    }
+    function clearError() {
+      $('#assetError').empty();
+    }
+    function reloadTable() {
+      clearError();
+      assetTable.ajax.reload(null, true);
+    }
+    function deleteAsset(id) {
+      if (!confirm('Delete this asset?')) return;
+      clearError();
+      $.ajax({
+        url: `/assets/api/${id}`,
+        method: 'DELETE',
+        success: reloadTable,
+        error: function(xhr) {
+          showError(xhr.responseJSON?.error || 'Failed to delete asset');
+        }
+      });
+    }
+    // Populate category dropdown on load
+    function loadCategories() {
+      $.ajax({
+        url: '/categories/api',
+        data: { page: 1, limit: 1000 },
+        success: function(res) {
+          let opts = `<option value="">All Types</option>`;
+          res.categories.forEach(cat => {
+            opts += `<option value="${cat.id}">${cat.name}</option>`;
+          });
+          $('#categoryFilter').html(opts);
+        }
+      });
+    }
+    $(document).ready(function() {
+      loadCategories();
+      assetTable = $('#assetTable').DataTable({
+        processing: true,
+        serverSide: true,
+        searching: false,
+        pageLength: 10,
+        ajax: function(data, callback, settings) {
+          clearError();
+          const page = Math.floor(data.start / data.length) + 1;
+          const search = $('#search').val().trim();
+          const categoryId = $('#categoryFilter').val();
+          const status = $('#statusFilter').val();
+          let historyPage = #{showHistoryAction}
+          $.ajax({
+            url: '/assets/api',
+            data: { search, categoryId, status, page, limit: data.length,historyPage },
+            success: function(res) {
+              callback({
+                data: res.assets.map(asset => [
+                  asset.serialNumber,
+                  asset.make || '',
+                  asset.model || '',
+                  asset.value || 0,
+                  asset.status,
+                  asset.Category ? asset.Category.name : '',
+                  !#{showHistoryAction}
+                    ? `<a href="/assets/${asset.id}/edit" class="btn btn-sm btn-info">Edit</a>
+                       <button class="btn btn-sm btn-danger" onclick="deleteAsset(${asset.id})">Delete</button>`
+                    : `<a href="/assettransactions/history/${asset.id}" class="btn btn-sm btn-secondary">View History</a>`
+                ]),
+                recordsTotal: res.totalCount || 0,
+                recordsFiltered: res.totalCount || 0
+              });
+            },
+            error: function(xhr) {
+              showError(xhr.responseJSON?.error || 'Failed to fetch assets');
+              callback({ data: [], recordsTotal: 0, recordsFiltered: 0 });
+            }
+          });
+        }
+      });
+
+      $('#search').on('input', reloadTable);
+      $('#categoryFilter').change(reloadTable);
+      $('#statusFilter').change(reloadTable);
+    });

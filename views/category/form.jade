@@ -1,0 +1,49 @@
+extends ../layout
+
+block content
+  h2= isEdit ? "Edit Category" : "Add Category"
+  #formError
+  form#categoryForm
+    .form-group
+      label(for="name") Name
+      input#name.form-control(type="text", name="name", required)
+    button.btn.btn-primary(type="submit")= isEdit ? "Update" : "Create"
+    a.btn.btn-secondary(href="/categories") Cancel
+  script.
+    function showFormError(msg) {
+      $('#formError').html(`<div class="alert alert-danger">${msg}</div>`);
+    }
+    function clearFormError() {
+      $('#formError').empty();
+    }
+    const isEdit = !#{!isEdit};
+    if (isEdit) {
+      $.ajax({
+        url: `/categories/api/${'#{id}'}`,
+        method: 'GET',
+        success: function(res) {
+          $('#name').val(res.category.name);
+        },
+        error: function(xhr) {
+          showFormError(xhr.responseJSON?.error || 'Failed to load category');
+        }
+      });
+    }
+    $('#categoryForm').on('submit', function(e) {
+      e.preventDefault();
+      clearFormError();
+      const data = {
+        name: $('#name').val()
+      };
+      const method = isEdit ? 'PUT' : 'POST';
+      const url = isEdit ? `/categories/api/${'#{id}'}` : '/categories/api';
+      $.ajax({
+        url, method,
+        contentType: 'application/json',
+        data: JSON.stringify(data),
+        success: function() { window.location = '/categories'; },
+        error: function(xhr) {
+          showFormError(xhr.responseJSON?.error || 'Unknown error');
+        }
+      });
+    });

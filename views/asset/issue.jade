@@ -1,0 +1,60 @@
+extends ../layout
+
+block content
+  .container.mt-5
+    h2.mb-4 Issue Asset
+
+    #msg-box
+      if error
+        .alert.alert-danger= error
+      if success
+        .alert.alert-success= success
+
+    form#issueForm(method="POST", action="/assettransactions/api/issue")
+      .mb-3
+        label.form-label(for="employee") Select Employee
+        select.form-select(name="employeeId", id="employeeId", required)
+          option(value="") -- Select an Employee --
+          each emp in activeEmployees
+            option(value=emp.id) #{emp.name} (#{emp.email})
+      .mb-3
+        label.form-label(for="assetIds") Select Asset(s)
+        select.form-select(name="assetIds", id="assetIds", multiple, required, size="6")
+          each asset in availableAssets
+            option(value=asset.id) #{asset.serialNumber} - #{asset.make} #{asset.model}
+        small.text-muted Hold Ctrl/Cmd to select multiple assets.
+      .mb-3
+        label.form-label(for="date") Issue Date
+        input.form-control(type="date", name="date", id="date", required, max=new Date().toISOString().slice(0,10))
+      button.btn.btn-primary.mt-3(type="submit") Issue Asset(s)
+
+  script.
+    document.getElementById('issueForm').onsubmit = async function(e) {
+      e.preventDefault();
+      const form = e.target;
+      const formData = new FormData(form);
+      const payload = new URLSearchParams(formData).toString();
+      const msgBox = document.getElementById('msg-box');
+      msgBox.innerHTML = ''; // Clear old messages
+
+      const res = await fetch('/assettransactions/api/issue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Accept': 'application/json' },
+        body: payload
+      });
+      const data = await res.json();
+      if(data.success) {
+        msgBox.innerHTML = `<div class="alert alert-success">${data.message}</div>`;
+        form.reset();
+        // Optionally, refresh asset list if availableAssets returned
+        if(data.availableAssets) {
+          const assetSel = document.getElementById('assetIds');
+          assetSel.innerHTML = '';
+          data.availableAssets.forEach(asset => {
+            assetSel.innerHTML += `<option value="${asset.id}">${asset.serialNumber} - ${asset.make} ${asset.model}</option>`;
+          });
+        }
+      } else {
+        msgBox.innerHTML = `<div class="alert alert-danger">${data.message}</div>`;
+      }
+    }

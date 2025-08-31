@@ -1,0 +1,40 @@
+extends ../layout
+
+block content
+  .container.mt-4
+    h2.mb-3 Asset History
+
+    // Asset summary card
+    .card.mb-4
+      .card-body
+        h4.card-title.mb-2 #{asset.serialNumber} | #{asset.make} #{asset.model}
+        dl.row
+          dt.col-sm-3 Value:
+          dd.col-sm-9 ₹#{asset.value}
+          dt.col-sm-3 Status:
+          dd.col-sm-9.text-capitalize #{asset.status}
+          dt.col-sm-3 Type:
+          dd.col-sm-9 #{asset.Category ? asset.Category.name : '—'}
+        small.text-muted Asset ID: #{asset.id}
+
+    // Transaction history
+    h5.mb-2 Transaction History
+    if history.length
+      table.table.table-bordered.table-sm
+        thead
+          tr
+            th Date
+            th Event
+            th Employee
+            th Reason
+        tbody
+          each tx in history
+            tr
+              td= tx.date.toISOString().slice(0,10)
+              td.text-capitalize= tx.type
+              td= tx.Employee ? tx.Employee.name + ' (' + tx.Employee.email + ')' : '-'
+              td= tx.reason || '-'
+    else
+      .alert.alert-info No transactions recorded for this asset.
+
+    a.btn.btn-secondary.mt-4(href="/assettransactions/history") ← Back to Asset Selector

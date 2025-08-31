@@ -1,0 +1,68 @@
+extends ../layout
+
+block content
+  .container.mt-5
+    h2.text-center.mb-4 Bird’s Eye View of Assets in Stock
+    #stockError.mt-2
+    table#summaryTable.table.table-bordered.table-hover.table-striped
+      thead.table-dark
+        tr
+          th Category
+          th.text-success In Stock
+          th.text-warning Issued
+          th.text-info Returned
+          th.text-danger Scrapped
+          th Total Value
+      tbody
+        each summary in assetSummaryList
+          tr
+            td #{summary.category}
+            td #{summary.inStock}
+            td #{summary.issued}
+            td #{summary.returned}
+            td #{summary.scrapped}
+            td.text-end ₹#{summary.totalValue.toLocaleString()}
+      //- Grand total row rendered as a separate element for DataTables to manage
+      tfoot
+        tr#grandTotalRow.table-primary.fw-bold
+          td Grand Total
+          td.text-success #{grandTotal.inStock}
+          td.text-warning #{grandTotal.issued}
+          td.text-returned #{grandTotal.returned}
+          td.text-danger #{grandTotal.scrapped}
+          td.text-end ₹#{grandTotal.totalValue.toLocaleString()}
+
+  script.
+    function showError(msg) {
+      $('#stockError').html(`<div class="alert alert-danger">${msg}</div>`);
+    }
+    function clearError() {
+      $('#stockError').empty();
+    }
+    $(document).ready(function() {
+      clearError();
+      if(error){
+        showError(error)
+      }
+      var $table = $('#summaryTable').DataTable({
+        paging: true,
+        searching: false,
+        info: true,
+        ordering: true,
+        pageLength: 10,
+        lengthMenu: [10, 25, 50, 100]
+      });
+
+      // Always keep grand total row at the end, regardless of current page
+      function moveGrandTotalRow() {
+        var api = $table;
+        // Append grand total row AFTER the currently visible page rows
+        $('#summaryTable tbody').append($('#grandTotalRow'));
+      }
+
+      $table.on('draw', function () {
+        moveGrandTotalRow();
+      });
+
+      moveGrandTotalRow();
+    });

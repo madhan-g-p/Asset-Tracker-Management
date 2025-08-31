@@ -1,0 +1,13 @@
+extends layout
+
+block content
+  script.
+    if (!localStorage.getItem('token')) {
+      window.location = '/auth/login';
+    }
+     // Fetch dashboard data (example)
+    $.get('/employees', function(data) {
+    
+    });
+  h1 Welcome to Asset Tracker Management!
+  p Use the navigation bar to manage employees, assets, categories, and transactions.
